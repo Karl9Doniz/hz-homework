@@ -17,33 +17,35 @@ public class QueueProducer {
 
         IQueue<Integer> queue = client.getQueue("bounded-queue");
 
-        try {
-            for (int i = 1; i <= 100; i++) {
+        int i = 1;
+        while (i <= 100) {
+            try {
                 System.out.println("Attempting to add: " + i);
 
-                //Option 1: Using the offer method with TimeUnit
                 boolean offered = queue.offer(i, 5, TimeUnit.SECONDS);
-
-                // Option 2: Regular offer without timeout (for testing full queue behavior)
-                // boolean offered = queue.offer(i);
-
-                // Option 3: Blocking put (will wait indefinitely if queue is full)
-                //queue.put(i);
-                //boolean offered = true;
-
                 if (offered) {
                     System.out.println("Added item: " + i);
+                    i++;
                 } else {
-                    System.out.println("Failed to add item: " + i + " (Queue full)");
+                    System.out.println("Queue full! Retrying item: " + i);
+                    Thread.sleep(500);
                 }
-
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println("Producer interrupted: " + e.getMessage());
             }
-        } catch (Exception e) {
-            System.err.println("Error: " + e.getMessage());
-            e.printStackTrace();
-        } finally {
-            client.shutdown();
-            System.out.println("Producer disconnected");
         }
+
+        System.out.println("All items added. Waiting for consumers...");
+        while (!queue.isEmpty()) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        client.shutdown();
+        System.out.println("Producer disconnected");
     }
 }
